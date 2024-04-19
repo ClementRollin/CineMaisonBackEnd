@@ -7,7 +7,8 @@ const pool = mariadb.createPool({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_DATABASE,
-    port: process.env.DB_PORT
+    port: process.env.DB_PORT,
+    connectionLimit: 5
 });
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
@@ -23,11 +24,9 @@ async function fetchMovies(page = 1) {
                 page: page
             }
         });
-        const movies = response.data.results;
-        const totalPages = response.data.total_pages;
-        return { movies, totalPages, currentPage: page };
+        return { movies: response.data.results, totalPages: response.data.total_pages, currentPage: page };
     } catch (error) {
-        console.error('Failed to fetch movies from TMDB:', error);
+        console.error('Failed to fetch movies from TMDB:', error.message);
         return { movies: [], totalPages: 0, currentPage: page };
     }
 }
@@ -36,24 +35,39 @@ async function saveMovies(movies) {
     let conn;
     try {
         conn = await pool.getConnection();
+        await conn.beginTransaction();
         const queryPromises = movies.map(movie => {
-            const genres = movie.genres ? movie.genres.map(g => g.name).join(', ') : '';
-            const sql = `INSERT INTO Movies (
-                tmdb_id, title, original_title, overview, genres, release_date, runtime, popularity, 
-                vote_average, vote_count, budget, revenue, original_language, status, tagline, 
-                poster_path, backdrop_path, homepage, imdb_id
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            ) ON DUPLICATE KEY UPDATE title=VALUES(title), overview=VALUES(overview)`;
+            const genres = (movie.genres && Array.isArray(movie.genres)) ? movie.genres.map(g => g.name).join(', ') : 'N/A';
+            const productionCompanies = (movie.production_companies && Array.isArray(movie.production_companies))
+                ? JSON.stringify(movie.production_companies.map(pc => pc.name || 'N/A'))
+                : '[]';
+            const productionCountries = (movie.production_countries && Array.isArray(movie.production_countries))
+                ? JSON.stringify(movie.production_countries.map(pc => pc.name || 'N/A'))
+                : '[]';
+            const spokenLanguages = (movie.spoken_languages && Array.isArray(movie.spoken_languages))
+                ? JSON.stringify(movie.spoken_languages.map(lang => lang.english_name || 'N/A'))
+                : '[]';
+
+            const sql = `
+                INSERT INTO Movies (movie_id, title, original_title, overview, tagline, release_date, genres,
+                                    original_language, status, runtime, popularity, budget, revenue, adult,
+                                    video, backdrop_path, poster_path, homepage, imdb_id, production_companies,
+                                    production_countries, spoken_languages)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE title=VALUES(title), overview=VALUES(overview), genres=VALUES(genres), runtime=VALUES(runtime);
+            `;
             return conn.query(sql, [
-                movie.id, movie.title, movie.original_title, movie.overview, genres, movie.release_date, movie.runtime,
-                movie.popularity, movie.vote_average, movie.vote_count, movie.budget, movie.revenue, movie.original_language,
-                movie.status, movie.tagline, movie.poster_path, movie.backdrop_path, movie.homepage, movie.imdb_id
+                movie.id, movie.title, movie.original_title, movie.overview, movie.tagline, movie.release_date,
+                genres, movie.original_language, movie.status, movie.runtime, movie.popularity, movie.budget,
+                movie.revenue, movie.adult, movie.video, movie.backdrop_path, movie.poster_path, movie.homepage,
+                movie.imdb_id, productionCompanies, productionCountries, spokenLanguages
             ]);
         });
         await Promise.all(queryPromises);
+        await conn.commit();
         console.log('Movies have been successfully saved to the database.');
     } catch (error) {
+        await conn.rollback();
         console.error('Error saving movies to database:', error);
     } finally {
         if (conn) await conn.end();

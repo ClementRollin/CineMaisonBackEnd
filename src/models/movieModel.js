@@ -16,8 +16,23 @@ class Movie {
         let conn;
         try {
             conn = await pool.getConnection();
-            const sql = "INSERT INTO Movies (title, synopsis, cast, trailer_link, streaming_platforms, genres, duration) VALUES (?, ?, ?, ?, ?, ?, ?)";
-            const res = await conn.query(sql, [movie.title, movie.synopsis, movie.cast, movie.trailer_link, movie.streaming_platforms, movie.genres, movie.duration]);
+            // Convertir les genres en une chaîne de noms séparés par des virgules
+            const genres = movie.genres ? movie.genres.map(g => g.name).join(', ') : '';
+            const sql = `
+                INSERT INTO Movies (movie_id, title, original_title, overview, tagline, release_date, genres,
+                                    original_language, status, runtime, popularity, budget, revenue, adult,
+                                    video, backdrop_path, poster_path, homepage, imdb_id, production_companies,
+                                    production_countries, spoken_languages)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE title = VALUES(title), overview = VALUES(overview), genres = VALUES(genres), runtime = VALUES(runtime);
+            `;
+            const res = await conn.query(sql, [
+                movie.id, movie.title, movie.original_title, movie.overview, movie.tagline, movie.release_date,
+                genres, movie.original_language, movie.status, movie.runtime, movie.popularity, movie.budget, 
+                movie.revenue, movie.adult, movie.video, movie.backdrop_path, movie.poster_path, movie.homepage,
+                movie.imdb_id, JSON.stringify(movie.production_companies), JSON.stringify(movie.production_countries),
+                JSON.stringify(movie.spoken_languages.map(lang => lang.english_name))
+            ]);
             return res;
         } finally {
             if (conn) await conn.release();
