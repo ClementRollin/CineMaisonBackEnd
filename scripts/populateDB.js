@@ -15,6 +15,21 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const MAX_MOVIES = 1000;
 
+async function fetchMovieDetails(movieId) {
+    try {
+        const response = await axios.get(`${TMDB_BASE_URL}/movie/${movieId}`, {
+            params: {
+                api_key: TMDB_API_KEY,
+                language: 'en-US'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error(`Failed to fetch details for movie ${movieId} from TMDB:`, error.message);
+        return null;
+    }
+}
+
 async function fetchMovies(page = 1) {
     try {
         const response = await axios.get(`${TMDB_BASE_URL}/movie/popular`, {
@@ -36,8 +51,11 @@ async function saveMovies(movies) {
     try {
         conn = await pool.getConnection();
         await conn.beginTransaction();
-        const queryPromises = movies.map(movie => {
-            const genres = (movie.genres && Array.isArray(movie.genres)) ? movie.genres.map(g => g.name).join(', ') : 'N/A';
+        const queryPromises = movies.map(async movie => {
+            const movieDetails = await fetchMovieDetails(movie.id);
+            if (!movieDetails) return;
+
+            const genres = (movieDetails.genres && Array.isArray(movieDetails.genres)) ? movieDetails.genres.map(g => g.name).join(', ') : 'N/A';
             const productionCompanies = (movie.production_companies && Array.isArray(movie.production_companies))
                 ? JSON.stringify(movie.production_companies.map(pc => pc.name || 'N/A'))
                 : '[]';
