@@ -9,8 +9,8 @@ const rateLimit = require('express-rate-limit');
 // Importation des services et des routes
 const fetchAndStoreMovies = require('./services/tmdbService');
 const moviesRoutes = require('./routes/moviesRoutes');
-//const usersRoutes = require('./routes/usersRoutes');
-//const favoritesRoutes = require('./routes/favoritesRoutes');
+const usersRoutes = require('./routes/usersRoutes');
+const favoritesRoutes = require('./routes/favoritesRoutes');
 const authRoutes = require('./routes/authRoutes');
 
 // Configuration des middlewares de base
@@ -27,10 +27,10 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Routes
-app.use('/api/movies', moviesRoutes);
-//app.use('/api/users', usersRoutes);
-//app.use('/api/favorites', favoritesRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/routes', moviesRoutes);
+app.use('/routes', usersRoutes);
+app.use('/routes', favoritesRoutes);
+app.use('/routes', authRoutes);
 
 // Route d'accueil simple
 app.get('/', (req, res) => {

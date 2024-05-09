@@ -17,7 +17,8 @@ class Movie {
         try {
             conn = await pool.getConnection();
             // Convertir les genres en une chaîne de noms séparés par des virgules
-            const genres = movie.genres ? movie.genres.map(g => g.name).join(', ') : '';
+            const genres = Array.isArray(movie.genres) ? movie.genres.map(g => g.name).join(', ') : '';
+            const spoken_languages = Array.isArray(movie.spoken_languages) ? JSON.stringify(movie.spoken_languages.map(lang => lang.english_name)) : '[]';
             const sql = `
                 INSERT INTO Movies (movie_id, title, original_title, overview, tagline, release_date, genres,
                                     original_language, status, runtime, popularity, budget, revenue, adult,
@@ -31,7 +32,7 @@ class Movie {
                 genres, movie.original_language, movie.status, movie.runtime, movie.popularity, movie.budget, 
                 movie.revenue, movie.adult, movie.video, movie.backdrop_path, movie.poster_path, movie.homepage,
                 movie.imdb_id, JSON.stringify(movie.production_companies), JSON.stringify(movie.production_countries),
-                JSON.stringify(movie.spoken_languages.map(lang => lang.english_name))
+                spoken_languages
             ]);
             return res;
         } finally {
