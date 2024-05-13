@@ -4,35 +4,42 @@ const userModel = require('../models/userModel');
 
 exports.setupAccount = async (req, res) => {
     const { username, password, passwordConfirm } = req.body;
+    if (!username || !password || !passwordConfirm) {
+        return res.status(400).json({ message: "Tous les champs sont requis." });
+    }
     if (password !== passwordConfirm) {
         return res.status(400).json({ message: "Les mots de passe ne correspondent pas." });
     }
 
     try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        await userModel.createUser(username, hashedPassword);
+        await userModel.setupAccount(username, password);
         res.status(201).json({ message: "Compte créé avec succès." });
     } catch (error) {
+        console.error('Error during account setup:', error);
         res.status(500).json({ message: "Erreur lors de la création du compte.", error: error.message });
     }
 };
 
 exports.login = async (req, res) => {
     const { username, password } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ message: "Nom d'utilisateur et mot de passe requis." });
+    }
+    
     try {
-        const user = await userModel.findUserByUsername(username);
+        console.log('Login attempt with username:', username);
+        const user = await userModel.login(username, password);
+        console.log('Login result user:', user);
         if (!user) {
-            return res.status(404).json({ message: "Utilisateur non trouvé." });
+            return res.status(404).json({ message: "Utilisateur non trouvé ou mot de passe incorrect." });
         }
 
-        const match = await bcrypt.compare(password, user.hashed_password);
-        if (match) {
-            const token = jwt.sign({ userId: user.id }, 'votre_secret_jwt', { expiresIn: '24h' });
-            res.json({ message: "Connexion réussie.", token });
-        } else {
-            res.status(401).json({ message: "Mot de passe incorrect." });
-        }
+        // Utilisation de la clé secrète JWT à partir des variables d'environnement
+        const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        console.log('Token generated:', token);
+        res.json({ message: "Connexion réussie.", token });
     } catch (error) {
+        console.error('Error during login:', error);
         res.status(500).json({ message: "Erreur lors de la connexion.", error: error.message });
     }
 };
