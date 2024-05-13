@@ -29,14 +29,12 @@ exports.login = async (req, res) => {
     try {
         console.log('Login attempt with username:', username);
         const user = await userModel.login(username, password);
-        console.log('Login result user:', user);
         if (!user) {
             return res.status(404).json({ message: "Utilisateur non trouvé ou mot de passe incorrect." });
         }
 
         // Utilisation de la clé secrète JWT à partir des variables d'environnement
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
-        console.log('Token generated:', token);
         res.json({ message: "Connexion réussie.", token });
     } catch (error) {
         console.error('Error during login:', error);

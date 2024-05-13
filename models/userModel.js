@@ -7,7 +7,6 @@ exports.createUser = async (username, hashedPassword) => {
             `INSERT INTO users (username, hashed_password) VALUES (?, ?)`,
             [username, hashedPassword]
         );
-        console.log('User created:', result);
         return result;
     } catch (error) {
         console.error('Error creating user:', error);
@@ -17,14 +16,10 @@ exports.createUser = async (username, hashedPassword) => {
 
 exports.findUserByUsername = async (username) => {
     try {
-        console.log('Querying user by username:', username);
         const [rows] = await db.query(`SELECT * FROM users WHERE username = ?`, [username]);
-        console.log('Query result:', rows);
         if (rows) {
-            console.log('User found:', rows);
             return rows;
         } else {
-            console.log('User not found');
             return null;
         }
     } catch (error) {
@@ -52,10 +47,8 @@ exports.login = async (username, password) => {
             throw new Error('Username and password are required');
         }
         const user = await exports.findUserByUsername(username);
-        console.log('Found user:', user);
         if (user) {
             const match = await bcrypt.compare(password, user.hashed_password);
-            console.log('Password match:', match);
             return match ? user : null;
         }
         return null;
