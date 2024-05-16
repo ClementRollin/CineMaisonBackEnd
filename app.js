@@ -25,7 +25,6 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Routes
 app.use('/auth', authRoutes);
 app.use('/movies', moviesRoutes);
 app.use('/users', usersRoutes);
@@ -37,5 +36,4 @@ app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
 
-// Exporter l'application
 module.exports = app;
