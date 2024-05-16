@@ -1,4 +1,5 @@
 const userModel = require('../models/userModel');
+const { post} = require("../app");
 
 exports.getAllUsers = async (req, res) => {
     try {
@@ -9,7 +10,7 @@ exports.getAllUsers = async (req, res) => {
     }
 };
 
-exports.createUser = async (req, res) => {
+post('/register', async (req, res) => {
     const { username, password } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
@@ -18,9 +19,9 @@ exports.createUser = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la création de l'utilisateur.", error: error.message });
     }
-};
+});
 
-exports.updateUser = async (req, res) => {
+post('/login', async (req, res) => {
     const { id } = req.params;
     const { username, password } = req.body;
     try {
@@ -30,7 +31,7 @@ exports.updateUser = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la mise à jour de l'utilisateur.", error: error.message });
     }
-};
+});
 
 exports.deleteUser = async (req, res) => {
     const { id } = req.params;
