@@ -1,7 +1,8 @@
 const db = require('../config/dbConfig');
 const bcrypt = require('bcrypt');
+const {post} = require("axios");
 
-exports.createUser = async (username, hashedPassword) => {
+post('/register', async (req, res) => {
     try {
         const result = await db.execute(
             `INSERT INTO users (username, hashed_password) VALUES (?, ?)`,
@@ -12,7 +13,7 @@ exports.createUser = async (username, hashedPassword) => {
         console.error('Error creating user:', error);
         throw error;
     }
-};
+});
 
 exports.findUserByUsername = async (username) => {
     try {
@@ -28,7 +29,7 @@ exports.findUserByUsername = async (username) => {
     }
 };
 
-exports.setupAccount = async (username, password) => {
+post('/register', async (req, res) => {
     try {
         if (!password || !username) {
             throw new Error('Username and password are required');
@@ -39,9 +40,9 @@ exports.setupAccount = async (username, password) => {
         console.error('Error setting up account:', error);
         throw error;
     }
-};
+});
 
-exports.login = async (username, password) => {
+post('/login', async (req, res) => {
     try {
         if (!password || !username) {
             throw new Error('Username and password are required');
@@ -56,4 +57,4 @@ exports.login = async (username, password) => {
         console.error('Error during login:', error);
         throw error;
     }
-};
+});
