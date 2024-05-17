@@ -1,12 +1,14 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const mariadb = require('mariadb');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const config = require('./config/dbConfig');
 
 const app = express();
-app.use(cors());  // Ajoutez cette ligne
+app.use(cors());
 app.use(bodyParser.json());
 
 const pool = mariadb.createPool({
@@ -16,6 +18,25 @@ const pool = mariadb.createPool({
     database: process.env.DB_DATABASE,
     port: process.env.DB_PORT,
     connectionLimit: 5,
+});
+
+const refreshTokens = [];
+
+app.post('/api/token', (req, res) => {
+    const { token } = req.body;
+    if (!token) {
+        return res.status(401).json({ message: 'Token non fourni' });
+    }
+    if (!refreshTokens.includes(token)) {
+        return res.status(403).json({ message: 'Refresh token invalide' });
+    }
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ message: 'Token invalide' });
+        }
+        const newAccessToken = jwt.sign({ userId: user.userId }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        res.json({ accessToken: newAccessToken });
+    });
 });
 
 app.post('/api/register', async (req, res) => {
@@ -56,12 +77,37 @@ app.post('/api/login', async (req, res) => {
         if (!isPasswordValid) {
             return res.status(400).json({ message: 'Mot de passe incorrect' });
         }
-        const token = jwt.sign({ userId: user.id }, 'votre_secret_key', { expiresIn: '1h' });
-        res.status(200).json({ token, message: 'Connexion réussie' });
+        const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const refreshToken = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET);
+        refreshTokens.push(refreshToken);
+        res.status(200).json({ token, refreshToken, message: 'Connexion réussie' });
     } catch (err) {
-        console.error(err);
+        console.error('Erreur lors de la connexion:', err);
         res.status(500).json({ message: 'Erreur serveur' });
     }
+});
+
+app.get('/api/user', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401);
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
+        if (err) return res.sendStatus(403);
+        try {
+            const connection = await pool.getConnection();
+            const rows = await connection.query("SELECT username FROM users WHERE user_id = ?", [user.userId]);
+            await connection.end();
+            if (rows.length === 0) {
+                return res.status(404).json({ message: 'Utilisateur non trouvé' });
+            }
+            res.json({ username: rows[0].username });
+        } catch (err) {
+            console.error('Erreur lors de la récupération de l\'utilisateur:', err);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    });
 });
 
 app.listen(5000, () => {
