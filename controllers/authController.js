@@ -2,7 +2,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const userModel = require('../models/userModel');
 
-exports.setupAccount = async (req, res) => {
+// Route pour la création d'un compte
+exports.register = async (req, res) => {
     const { username, password, passwordConfirm } = req.body;
     if (!username || !password || !passwordConfirm) {
         return res.status(400).json({ message: "Tous les champs sont requis." });
@@ -12,7 +13,8 @@ exports.setupAccount = async (req, res) => {
     }
 
     try {
-        await userModel.setupAccount(username, password);
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await userModel.createUser(username, hashedPassword);
         res.status(201).json({ message: "Compte créé avec succès." });
     } catch (error) {
         console.error('Error during account setup:', error);
@@ -20,20 +22,24 @@ exports.setupAccount = async (req, res) => {
     }
 };
 
+// Route pour la connexion
 exports.login = async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
         return res.status(400).json({ message: "Nom d'utilisateur et mot de passe requis." });
     }
-    
+
     try {
-        console.log('Login attempt with username:', username);
-        const user = await userModel.login(username, password);
+        const user = await userModel.findUserByUsername(username);
         if (!user) {
-            return res.status(404).json({ message: "Utilisateur non trouvé ou mot de passe incorrect." });
+            return res.status(404).json({ message: "Utilisateur non trouvé." });
         }
 
-        // Utilisation de la clé secrète JWT à partir des variables d'environnement
+        const match = await bcrypt.compare(password, user.hashed_password);
+        if (!match) {
+            return res.status(400).json({ message: "Mot de passe incorrect." });
+        }
+
         const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '24h' });
         res.json({ message: "Connexion réussie.", token });
     } catch (error) {

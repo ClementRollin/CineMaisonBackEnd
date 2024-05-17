@@ -1,12 +1,7 @@
 const db = require('../config/dbConfig');
-const bcrypt = require('bcrypt');
-const {post} = require("axios");
 
-post('/register', async (req, res) => {
+exports.createUser = async (username, hashedPassword) => {
     try {
-        let username = req.body.username;
-        let hashedPassword = await bcrypt.hash(req.body.password, 10);
-
         return await db.execute(
             `INSERT INTO users (username, hashed_password) VALUES (?, ?)`,
             [username, hashedPassword]
@@ -15,45 +10,14 @@ post('/register', async (req, res) => {
         console.error('Error creating user:', error);
         throw error;
     }
-});
+};
 
-post('/register', async (req, res) => {
+exports.findUserByUsername = async (username) => {
     try {
-        let password = req.body.password;
-        let username = req.body.username;
-
-        if (!password || !username) {
-            return new Error('Username and password are required');
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        return await db.execute(
-            `INSERT INTO users (username, hashed_password) VALUES (?, ?)`,
-            [username, hashedPassword]
-        );
+        const [rows] = await db.execute(`SELECT * FROM users WHERE username = ?`, [username]);
+        return rows[0];
     } catch (error) {
-        console.error('Error setting up account:', error);
+        console.error('Error finding user by username:', error);
         throw error;
     }
-});
-
-post('/login', async (req, res) => {
-    try {
-        let password = req.body.password;
-        let username = req.body.username;
-
-        if (!password || !username) {
-            return new Error('Username and password are required');
-        }
-        const user = await exports.findUserByUsername(username);
-        user.hashed_password = user.hashed_password.toString();
-        if (user) {
-            const match = await bcrypt.compare(password, user.hashed_password);
-            return match ? user : null;
-        }
-        return null;
-    } catch (error) {
-        console.error('Error during login:', error);
-        throw error;
-    }
-});
+};
