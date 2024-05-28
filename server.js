@@ -22,6 +22,7 @@ const pool = mariadb.createPool({
 
 const refreshTokens = [];
 
+// Middleware pour rafraîchir le token
 app.post('/api/token', (req, res) => {
     const { token } = req.body;
     if (!token) {
@@ -39,6 +40,7 @@ app.post('/api/token', (req, res) => {
     });
 });
 
+// Inscription
 app.post('/api/register', async (req, res) => {
     const { username, password, confirmPassword } = req.body;
     if (!username || !password) {
@@ -60,6 +62,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
+// Connexion
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
@@ -87,6 +90,7 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Middleware pour vérifier le token
 app.get('/api/user', async (req, res) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -105,6 +109,27 @@ app.get('/api/user', async (req, res) => {
             res.json({ username: rows[0].username });
         } catch (err) {
             console.error('Erreur lors de la récupération de l\'utilisateur:', err);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    });
+});
+
+// Ajout d'un film en favori
+app.get('/api/favorites', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401);
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
+        if (err) return res.sendStatus(403);
+        try {
+            const connection = await pool.getConnection();
+            const rows = await connection.query("SELECT * FROM favorites WHERE user_id = ?", [user.userId]);
+            await connection.end();
+            res.json(rows);
+        } catch (err) {
+            console.error('Erreur lors de la récupération des films favoris:', err);
             res.status(500).json({ message: 'Erreur serveur' });
         }
     });
