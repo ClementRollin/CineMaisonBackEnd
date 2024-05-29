@@ -80,7 +80,7 @@ app.post('/api/login', async (req, res) => {
         if (!isPasswordValid) {
             return res.status(400).json({ message: 'Mot de passe incorrect' });
         }
-        const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+        const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET, { expiresIn: '8h' });
         const refreshToken = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET);
         refreshTokens.push(refreshToken);
         res.status(200).json({ token, refreshToken, message: 'Connexion réussie' });
@@ -136,24 +136,30 @@ app.get('/api/favorites', async (req, res) => {
 });
 
 // Afficher tous les films
-app.get('/api/movies', async (req, res) => {
+const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
 
-    if (token == null) return res.sendStatus(401);
+    if (token == null) return res.sendStatus(401); // Si aucun jeton n'est fourni, renvoyer 401
 
-    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
-        if (err) return res.sendStatus(403);
-        try {
-            const connection = await pool.getConnection();
-            const rows = await connection.query("SELECT title, poster_path FROM movies");
-            await connection.end();
-            res.json(rows);
-        } catch (err) {
-            console.error('Erreur lors de la récupération des films:', err);
-            res.status(500).json({ message: 'Erreur serveur' });
-        }
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.sendStatus(403); // Si le jeton est invalide, renvoyer 403
+        req.user = user;
+        next();
     });
+};
+
+// Appliquer le middleware à la route
+app.get('/api/movies', authenticateToken, async (req, res) => {
+    try {
+        const connection = await pool.getConnection();
+        const rows = await connection.query("SELECT title, poster_path FROM movies");
+        await connection.end();
+        res.json(rows);
+    } catch (err) {
+        console.error('Erreur lors de la récupération des films:', err);
+        res.status(500).json({ message: 'Erreur serveur' });
+    }
 });
 
 app.listen(5000, () => {
