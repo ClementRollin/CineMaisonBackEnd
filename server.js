@@ -135,6 +135,27 @@ app.get('/api/favorites', async (req, res) => {
     });
 });
 
+// Afficher tous les films
+app.get('/api/movies', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token == null) return res.sendStatus(401);
+
+    jwt.verify(token, process.env.JWT_SECRET, async (err, user) => {
+        if (err) return res.sendStatus(403);
+        try {
+            const connection = await pool.getConnection();
+            const rows = await connection.query("SELECT title, poster_path FROM movies");
+            await connection.end();
+            res.json(rows);
+        } catch (err) {
+            console.error('Erreur lors de la récupération des films:', err);
+            res.status(500).json({ message: 'Erreur serveur' });
+        }
+    });
+});
+
 app.listen(5000, () => {
     console.log('Server running on port 5000');
 });
