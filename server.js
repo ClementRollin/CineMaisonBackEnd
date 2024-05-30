@@ -153,8 +153,8 @@ const authenticateToken = (req, res, next) => {
 app.get('/api/movies', authenticateToken, async (req, res) => {
     const { page = 1, limit = 20 } = req.query;
     try {
-        const connection = await pool.getConnection();
         const offset = (page - 1) * limit;
+        const connection = await pool.getConnection();
         const rows = await connection.query("SELECT movie_id, title, poster_path FROM movies LIMIT ? OFFSET ?", [parseInt(limit), offset]);
         await connection.end();
         res.json(rows);
