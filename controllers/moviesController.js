@@ -1,8 +1,10 @@
 const Movie = require('../models/movieModel');
 
-exports.getAllMovies = async (req, res) => {
+exports.getMovies = async (req, res) => {
+    const { page = 1, limit = 20 } = req.query;
     try {
-        const movies = await Movie.fetchAll();
+        const offset = (page - 1) * limit;
+        const movies = await Movie.find().skip(offset).limit(parseInt(limit));
         res.json(movies);
     } catch (error) {
         res.status(500).json({ message: "Erreur lors de la récupération des films.", error: error.message });
