@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const config = require('./config/dbConfig');
+const axios = require('axios'); // Import axios
 
 const app = express();
 app.use(cors());
@@ -161,6 +162,18 @@ app.get('/api/movies', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('Erreur lors de la récupération des films:', err);
         res.status(500).json({ message: 'Erreur serveur' });
+    }
+});
+
+// Ajout de l'endpoint pour les recommandations
+app.post('/api/get-movie-recommendation', async (req, res) => {
+    const { mood, day, genre, duration } = req.body;
+
+    try {
+        const recommendations = await axios.post('http://10.104.131.172:5000/recommend', { mood, day, genre, duration });
+        res.json(recommendations.data);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get recommendations' });
     }
 });
 

@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const getRecommendations = async (userId, topN = 10) => {
     try {
-        const response = await axios.post('http://localhost:80/recommendations', {
+        const response = await axios.post('http://10.104.131.172:5000/recommendations', {
             user_id: userId,
             top_n: topN
         });
