@@ -152,11 +152,18 @@ const authenticateToken = (req, res, next) => {
 
 // Appliquer le middleware à la route
 app.get('/api/movies', authenticateToken, async (req, res) => {
-    const { page = 1, limit = 20 } = req.query;
+    const { genre } = req.query; // Récupère le genre depuis la requête
     try {
-        const offset = (page - 1) * limit;
         const connection = await pool.getConnection();
-        const rows = await connection.query("SELECT movie_id, title, poster_path FROM movies LIMIT ? OFFSET ?", [parseInt(limit), offset]);
+        let query = "SELECT movie_id, title, poster_path, genres FROM movies";
+        let params = [];
+
+        if (genre) {
+            query += " WHERE genres LIKE ?";
+            params.push(`%${genre}%`);
+        }
+
+        const rows = await connection.query(query, params);
         await connection.end();
         res.json(rows);
     } catch (err) {
